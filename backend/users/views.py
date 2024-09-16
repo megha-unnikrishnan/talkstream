@@ -22,6 +22,7 @@ from django.template.loader import render_to_string
 from .utils import email_verification_token
 from rest_framework.permissions import AllowAny
 import logging
+from django.db.models import Q
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from django.contrib.auth import authenticate, login
@@ -139,6 +140,29 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+    
+@api_view(['POST'])
+def update_pictures(request):
+    user = request.user
+    cover_photo = request.FILES.get('cover_photo')
+    profile_picture = request.FILES.get('profile_picture')
+
+    if cover_photo:
+        try:
+            user.cover_picture.save(cover_photo.name, cover_photo)
+        except Exception as e:
+            logger.error(f"Error saving cover photo: {e}")
+    if profile_picture:
+        try:
+            user.profile_picture.save(profile_picture.name, profile_picture)
+        except Exception as e:
+            logger.error(f"Error saving profile picture: {e}")
+
+    user.save()
+    serializer = UserSerializer(user)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 
 class UpdatePasswordView(APIView):
     def post(self, request, *args, **kwargs):
@@ -194,6 +218,19 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 class AdminTokenObtainPairView(CustomTokenObtainPairView):
     pass
 
+@api_view(['GET'])
+def search_users(request):
+    query = request.GET.get('query', '')
+    if not query:
+        return Response({'error': 'Query parameter is missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+    users = User.objects.filter(
+            Q(username__icontains=query) | 
+            Q(first_name__icontains=query) | 
+            Q(email__icontains=query).values('username', 'first_name', 'email')
+        )
+    serializer = UserSerializer(users, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class VerifyEmailView(APIView):

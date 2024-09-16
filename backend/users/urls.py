@@ -19,6 +19,8 @@ urlpatterns = [
     path('user-view/',views.UserViewSet.as_view(),name='user-view'),
     path('users/<int:user_id>/block/', views.block_user, name='block_user'),
     path('users/<int:user_id>/unblock/', views.unblock_user, name='unblock_user'),
+     path('update-pictures/', views.update_pictures, name='update_pictures'),
+     path('search/', views.search_users, name='user-search'),
 ]
     
 
